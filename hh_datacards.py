@@ -5,27 +5,28 @@ import argparse
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--ntuple-tag", default=os.environ.get("NTUPLETAG"))
-    p.add_argument("--tag", default=os.environ.get("TAG"))
+    p.add_argument("--tag", default=os.environ.get("TAG")) # nn_tag
     p.add_argument("--era", default=os.environ.get("ERA"))
+    p.add_argument("--final-state", default="all", choices=["et", "mt", "tt", "all"])
+    p.add_argument("--output-dir")
     return p.parse_args()
+
+def get_synced_shapes_dir(era, channel, ntuple_tag, tag):
+    return f"output/{era}-{channel}-{ntuple_tag}-{tag}/synced/htt_{channel}.inputs-sm-Run{era}-ML.root"
 
 def main():
     args = parse_args()
     cb = ch.CombineHarvester()
 
-    cmssw_base = os.environ.get("CMSSW_BASE")
-    shapes_dir = f"{cmssw_base}/src/HHDatacards/shapes/equal-events-1"
-
     ntupelTag = args.ntuple_tag
     tag = args.tag
     era = args.era
+    output_dir = args.output_dir if args.output_dir else f"/work/sdaigler/smhtt_ul/output/datacards/{ntupelTag}/{tag}/{args.final_state}"
 
     print(f"[INFO] ntuple tag: {ntupelTag}, tag: {tag}, era: {era}")
 
-    output_dir = f"/work/sdaigler/smhtt_ul/output/datacards/{ntupelTag}-{tag}"
-
     # Defining analysis-specific configuration
-    final_states = ["mt", "et", "tt"]
+    final_states = ["mt", "et", "tt"] if args.final_state == "all" else [args.final_state]
     backgrounds = [
         "W",
         "EWK",
@@ -54,10 +55,12 @@ def main():
         cb.AddObservations(["*"], ["htt"], [era], [fs], categories[fs])
         cb.AddProcesses(["*"], ["htt"], [era], [fs], backgrounds, categories[fs], signal=False)
         cb.AddProcesses([""], ["htt"], [era], [fs], [signal], categories[fs], signal=True)
-        cb.cp().channel([fs]).ExtractShapes(f"{shapes_dir}/htt_{fs}.inputs-sm-Run{era}-ML.root", "$BIN/$PROCESS", "$BIN/$PROCESS_$SYSTEMATIC")
+        synced_shapes_dir = get_synced_shapes_dir(era, fs, ntupelTag, tag)
+        print(f"[INFO] Using synced shapes from: {synced_shapes_dir}")
+        cb.cp().channel([fs]).ExtractShapes(synced_shapes_dir, "$BIN/$PROCESS", "$BIN/$PROCESS_$SYSTEMATIC")
 
     # Adding systematic uncertainties
-    cb.cp().AddSyst(cb,"eff_m","lnN",ch.SystMap()(1.03)) # Example uncertainty
+    # cb.cp().AddSyst(cb,"eff_m","lnN",ch.SystMap()(1.03)) # Example uncertainty
 
     # Removing processes with yield smaller or equal to 0
     cb.FilterProcs(lambda p : p.rate() <= 0.0)
