@@ -2,8 +2,6 @@ import os
 import CombineHarvester.CombineTools.ch as ch
 import argparse
 
-SYSTEMATICS = False
-
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--ntuple-tag", default=os.environ.get("NTUPLETAG"))
@@ -11,6 +9,7 @@ def parse_args():
     p.add_argument("--era", default=os.environ.get("ERA"))
     p.add_argument("--final-state", default="all", choices=["et", "mt", "tt", "all"])
     p.add_argument("--output-dir")
+    p.add_argument("--systematics", action="store_true", help="Add systematic uncertainties to datacard")
     return p.parse_args()
 
 def get_synced_shapes_dir(era, channel, ntuple_tag, tag):
@@ -23,6 +22,7 @@ def main():
     ntupelTag = args.ntuple_tag
     tag = args.tag
     era = args.era
+    use_systematics = args.systematics
     output_dir = args.output_dir if args.output_dir else f"/work/sdaigler/smhtt_ul/output/datacards/{ntupelTag}/{tag}/{args.final_state}"
 
     print(f"[INFO] ntuple tag: {ntupelTag}, tag: {tag}, era: {era}")
@@ -63,7 +63,8 @@ def main():
         cb.cp().channel([fs]).ExtractShapes(synced_shapes_dir, "$BIN/$PROCESS", "$BIN/$PROCESS_$SYSTEMATIC")
 
     # Adding systematic uncertainties
-    if SYSTEMATICS:
+    if use_systematics:
+        print("[INFO] Adding systematic uncertainties to datacard")
         cb.cp().channel(["et"]).AddSyst(cb,"eff_e","lnN",ch.SystMap()(1.02))
         cb.cp().channel(["mt"]).AddSyst(cb,"eff_m","lnN",ch.SystMap()(1.02))
 
@@ -135,6 +136,9 @@ def main():
         # Branching Fractions für H→bb und H→ττ
         cb.cp().process([signal]).AddSyst(cb, "BR_h_bb",      "lnN", ch.SystMap()((1.0125, 0.9873)))
         cb.cp().process([signal]).AddSyst(cb, "BR_h_tautau",  "lnN", ch.SystMap()(1.0165))
+        print(f"[INFO] Added systematic uncertainties to the datacard")
+    else:
+        print("[INFO] Not adding systematic uncertainties to datacard")
 
 
     # Removing processes with yield smaller or equal to 0
