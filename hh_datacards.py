@@ -2,6 +2,12 @@ import os
 import CombineHarvester.CombineTools.ch as ch
 import argparse
 
+lumi_base = 59.83
+# lumi_target = 137.66 # Run 2 full
+lumi_target = 430.8 # Run 2 + Run 3
+lumi_sf = lumi_target / lumi_base
+USE_LUMI_SF = False
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--ntuple-tag", default=os.environ.get("NTUPLETAG"))
@@ -61,6 +67,12 @@ def main():
         synced_shapes_dir = get_synced_shapes_dir(era, fs, ntupelTag, tag)
         print(f"[INFO] Using synced shapes from: {synced_shapes_dir}")
         cb.cp().channel([fs]).ExtractShapes(synced_shapes_dir, "$BIN/$PROCESS", "$BIN/$PROCESS_$SYSTEMATIC")
+
+    # Adding luminosity scale factor
+    if USE_LUMI_SF:
+        cb.cp().ForEachProc(lambda pr: pr.set_rate(pr.rate() * lumi_sf))
+        print(f"[INFO] Scaled MC rates by x{lumi_sf:.3f} to target luminosity {lumi_target} fb^-1 (base {lumi_base} fb^-1).")
+
 
     # Adding systematic uncertainties
     if use_systematics:
