@@ -3,8 +3,10 @@ import CombineHarvester.CombineTools.ch as ch
 import argparse
 
 lumi_base = 59.83
-# lumi_target = 137.66 # Run 2 full
-lumi_target = 430.8 # Run 2 + Run 3
+# lumi_target = 138 # Run 2 full
+
+# Expected Lumi run 3 is 400 fb-1
+lumi_target = 500 # Run 2 + Run 3
 lumi_sf = lumi_target / lumi_base
 USE_LUMI_SF = False
 
@@ -130,7 +132,7 @@ def main():
         cb.cp().process(["VH125"]).AddSyst(cb, "alphaS_VH",   "lnN", ch.SystMap()(1.009))
 
         # QCD from AN resolved_2b 
-        # Not for et because no QCD estimated by ABCD method in this channel
+        # In et channel some bins are empty for QCD, so we only apply the norm uncertainty to bins with non-zero yield
         cb.cp().channel(["et"]).bin_id([2,3,5]).process(["QCD"]).AddSyst(cb, "QCDNorm_$CHANNEL_$ERA", "lnN", ch.SystMap()(1.108))
         cb.cp().channel(["mt"]).process(["QCD"]).AddSyst(cb, "QCDNorm_$CHANNEL_$ERA", "lnN", ch.SystMap()(1.108))
         cb.cp().channel(["tt"]).process(["QCD"]).AddSyst(cb, "QCDNorm_$CHANNEL_$ERA", "lnN", ch.SystMap()(1.216))
@@ -157,6 +159,7 @@ def main():
     cb.FilterProcs(lambda p : p.rate() <= 0.0)
 
     # Running an autorebinning: https://github.com/cms-analysis/CombineHarvester/blob/main/CombineTools/src/AutoRebin.cc
+    # SetBinThreshold 1 or 10?
     rebinner = ch.AutoRebin().SetBinThreshold(1.0).SetBinUncertFraction(0.9).SetRebinMode(1).SetPerformRebin(True).SetVerbosity(1)
     rebinner.Rebin(cb,cb)
 
